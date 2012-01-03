@@ -1,4 +1,4 @@
-Oatmeal lets you quickly see what's running on each of your workspaces (also known as "virtual desktops") and switch to the one you want. For example, upon invoking Oatmeal, you might see this:
+Oatmeal lets you quickly see what's running on each of your workspaces (also known as "virtual desktops") and switch to the workspace you want. For example, upon invoking Oatmeal, you might see this:
 
 .. image:: http://img36.imageshack.us/img36/3502/oatmealexample.png
   :target: http://img36.imageshack.us/img36/3502/oatmealexample.png
@@ -24,7 +24,7 @@ Installation
 Motivation
 ============================================================
 
-One thing I missed when I switched from GNOME 2 to KDE 4 in late 2011 was an indicator of which programs are running in which workspace. Whenever the user switches workspaces, GNOME 2 briefly displays on screen the layout of one's workspaces, the outlines of each windows in each workspace, and an icon in each window representing the program it belongs to. KDE, on the other hand, displays only a layout, with no indication of what's running where.
+One thing I missed when I switched from GNOME 2 to KDE 4 in late 2011 was an indicator of which programs are running in which workspace. Whenever the user switches workspaces, GNOME 2 briefly displays on screen the layout of one's workspaces, the outlines of each window in each workspace, and an icon in each window representing the program it belongs to. KDE, on the other hand, displays only a layout, with no indication of what's running where.
 
 This is a grotesque hack!
 ============================================================
