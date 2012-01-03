@@ -1,0 +1,199 @@
+#!/usr/bin/perl
+
+use utf8; binmode STDOUT, ':utf8'; binmode STDERR, ':utf8';
+use warnings;
+use strict;
+use SVG;
+use Encode 'encode', 'decode';
+use File::Slurp 'write_file';
+use List::Util 'first';
+use IPC::System::Simple 'capturex', 'runx';
+use X11::Protocol;
+use X11::Keyboard;
+
+# ---------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------
+
+my $workspaces_wide = 4;
+my $workspaces_tall = 4;
+my @workspace_keys = qw(
+    q w e r
+    a s d f
+    z x c v
+    j k l ;
+);
+
+my $svg_output_path = '/tmp/oatmeal-workspaces.svg';
+sub view_output
+   {my $bitmap_output_path = '/tmp/oatmeal-workspaces.ppm';
+    runx 'convert', $svg_output_path, $bitmap_output_path;
+    exec 'xli', $bitmap_output_path;};
+
+my $cell_ratio = 1024/768;
+my $svg_height = 700;
+my $program_font_size = 24;
+my $window_title_font_size = 14;
+my $key_font_size = 36;
+
+my %keysym_names = (';' => 'semicolon');
+
+# ---------------------------------------------------------------
+# Subroutines
+# ---------------------------------------------------------------
+
+sub enumerate
+ {my $n = -1;
+  return map {[++$n, $_]} @_;}
+
+BLOCK:
+   {my $x11p = X11::Protocol->new;
+    $x11p->event_handler('queue');
+    my $keybd = X11::Keyboard->new($x11p);
+    no warnings 'uninitialized';
+    sub getkey
+      # Given something like (Escape => 2, a => "foobar"), waits
+      # for a keypress. It returns the given value if the user
+      # presses a given key and undef otherwise.
+       {my %key_values = @_;
+        my %keycode_values;
+        $keycode_values{ $keybd->KeysymToKeycode($_) } = $key_values{$_}
+            foreach keys %key_values;
+        $x11p->GrabKeyboard($x11p->root, 0,
+            'Asynchronous', 'Asynchronous', 'CurrentTime');
+        my %event;
+        %event = $x11p->next_event
+            until $event{name} eq 'KeyPress';
+        $x11p->UngrabKeyboard('CurrentTime');
+        runx 'true';
+          # Seems to be necessary to get the keyboard ungrabbed.
+        return $keycode_values{$event{detail}};}}
+
+my $svg_width = int($cell_ratio * $svg_height);
+my $cell_width = $svg_width / $workspaces_wide;
+my $cell_height = $svg_height / $workspaces_tall;
+use constant TX => 10;
+
+my @layout;
+sub ws
+  # Gets the corresponding element of @layout for a workspace number.
+   {($layout[$_[0] % $workspaces_wide][int($_[0] / $workspaces_tall)]
+      ||= {})}
+
+sub show_switcher_and_solicit_choice
+   {@layout = map {[(undef) x $workspaces_tall]} 1 .. $workspaces_wide;
+
+    foreach (capturex 'wmctrl', '-lx')
+       {$_ = decode 'utf8', $_;
+        chomp;
+        m/0x[0-9a-f]+  \s+  (-?\d+)  \s+  (\S+)  \s+ \S+ \s+ (.*)/x
+            or die "Couldn't parse: $_";
+          # 0x03a000ef  2 2043   30   66   977  664  Navigator.Firefox     Balder The CPAN Search Site - search.cpan.org - Pentadactyl
+        my ($workspace, $program, $window_title) = ($1, $2, $3);
+        $workspace == -1 and next;
+        $window_title ||= '•';
+        $program =
+            $program =~ /DocumentWindow/
+          ? $window_title =~ / - (.+)\z/
+            ? $1
+            : $window_title
+          : $program =~ /\.(.+)/
+          ? $1
+          : $window_title =~ /\AR Graphics/
+          ? 'R Graphics'
+          : $window_title;
+        $window_title =~ s/[-–—] \Q$program\E\z//;
+        push @{ws($workspace)->{programs}{$program}},
+            $window_title;}
+
+    my $this_workspace = first
+        {substr($_, 3, 1) eq '*'}
+        capturex 'wmctrl', '-d';
+    $this_workspace =~ /\A(\d+)/ or die;
+    ws($1)->{user_is_here} = 1;
+
+    my $svg = SVG->new(width => $svg_width, height => $svg_height);
+
+    my $workspace_n = 0;
+    foreach my $y (0 .. $workspaces_tall - 1)
+       {foreach my $x (0 .. $workspaces_wide - 1)
+           {my $g = $svg->group(
+                (transform => sprintf('translate(%s,%s)',
+                    $x * $cell_width, $y * $cell_height),
+                 style => {'font-family' => 'sans-serif'}));
+
+            # Draw the cell representing this workspace.
+            $g->rect(x => 0, y => 0,
+                width => $cell_width, height => $cell_height,
+                fill =>
+                   ($layout[$x][$y]{user_is_here} ? '#afa'
+                  : $layout[$x][$y]{programs}     ? 'white'
+                                                  : '#666'),
+                stroke => 'none');
+
+            # For each window, write the name of the associated
+            # program and the window's title.
+            my $ty = 1.25 * $program_font_size;
+            foreach my $program (sort keys %{$layout[$x][$y]{programs}})
+               {$g->text
+                   (x => TX, y => $ty,
+                    fill => 'black',
+                    style => {'font-size' => $program_font_size})
+                 ->cdata($program);
+                $ty += .75 * $program_font_size;
+                foreach (@{$layout[$x][$y]{programs}{$program}})
+                   {$g->text
+                       (x => TX, y => $ty,
+                        fill => 'black',
+                        style => {'font-size' => $window_title_font_size})
+                     ->cdata($_);
+                    $ty += 1.25 * $window_title_font_size;}
+                $ty -= 1.25 * $window_title_font_size;
+                $ty += 1.35 * $program_font_size;}
+
+            # Write the key the user should press to choose this
+            # workspace.
+            my $kty = $cell_height - (1/2)*$key_font_size;
+            my $ktx = TX;
+            $g->rect
+               (x => 0, y => $kty - $key_font_size,
+                width => $ktx + $key_font_size,
+                height => $cell_height - ($kty - $key_font_size),
+                fill => 'lightgray',
+                stroke => 'black', 'stroke-width' => 1);
+            $g->text
+               (x => $ktx, y => $kty,
+                style =>
+                   {'font-size' => $key_font_size,
+                    'font-family' => 'monospace'})
+              ->cdata($workspace_keys[$workspace_n++]);
+
+            # Draw the cell border.
+            $g->rect(x => 0, y => 0,
+                width => $cell_width, height => $cell_height,
+                fill => 'none',
+                stroke => 'black', 'stroke-width' => 2);}}
+
+    write_file $svg_output_path, encode 'utf8', $svg->xmlify;
+
+    my $kidpid = (fork() or view_output);
+
+    my $workspace = getkey
+        map {my ($i, $k) = @$_; ($keysym_names{$k} // $k) => $i}
+            enumerate @workspace_keys;
+    kill 'TERM', $kidpid;
+    defined $workspace
+        and runx 'wmctrl', '-s', $workspace;}
+
+# ---------------------------------------------------------------
+# Mainline code
+# ---------------------------------------------------------------
+
+if (@ARGV and $ARGV[0] eq 'test')
+   {show_switcher_and_solicit_choice;
+    exit;}
+
+$SIG{USR1} = sub {1};
+while (1)
+   {sleep;
+    show_switcher_and_solicit_choice;}
