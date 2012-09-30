@@ -183,7 +183,8 @@ sub show_switcher_and_solicit_choice
             enumerate @workspace_keys;
     kill 'TERM', $kidpid;
     defined $workspace
-        and runx 'wmctrl', '-s', $workspace;}
+        and runx 'wmctrl', '-s', $workspace;
+    wait;}
 
 # ---------------------------------------------------------------
 # Mainline code
