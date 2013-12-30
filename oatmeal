@@ -28,7 +28,7 @@ my $svg_output_path = '/tmp/oatmeal-workspaces.svg';
 sub view_output
    {my $bitmap_output_path = '/tmp/oatmeal-workspaces.ppm';
     runx 'convert', $svg_output_path, $bitmap_output_path;
-    exec 'xli', $bitmap_output_path;};
+    exec 'xli', $bitmap_output_path;}
 
 my $cell_ratio = 1024/768;
 my $svg_height = 700;
