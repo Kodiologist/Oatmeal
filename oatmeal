@@ -92,6 +92,9 @@ sub show_switcher_and_solicit_choice
         my ($workspace, $program, $window_title) = ($1, $2, $3);
         $workspace == -1 and next;
         $window_title ||= '•';
+        $window_title =~ s/\x1f//g;
+          # This character showed up in an Okular window once.
+          # SVG.pm chokes on it. I got nothin'.
         $program =
             $program =~ /DocumentWindow/
           ? $window_title =~ / - (.+)\z/
