@@ -14,7 +14,7 @@ Installation
 ============================================================
 
 * Ensure you have each of the Perl modules listed at the top of the program. You can install modules with ``sudo cpan install X11::Protocol`` or ``sudo cpanm X11::Protocol`` (using cpanminus_) or your package manager.
-* Edit Oatmeal's parameters as necessary. Notice that the default definition of ``view_output`` uses ImageMagick_'s ``convert`` to make the produced SVG into a bitmap and ``xli`` to view the bitmap, so you should either install these programs or find alternatives.
+* Edit Oatmeal's parameters as necessary. Notice that the default definition of ``view_output`` uses ``xli`` to display the bitmap, so you should either install ``xli`` or find an alternative.
 * Say ``perl oatmeal test`` to try out the display. Press any key not included in ``@workspace_keys`` to dismiss the switcher without changing workspaces.
 * Ensure Oatmeal is automatically launched each time you log in, and assign a key combination to the command ``pkill -USR1 oatmeal`` (which causes Oatmeal to display the switcher and wait for a keypress). How to do these things depends on your desktop. In KDE 4, take a look at the "Startup and Shutdown" and "Shortcuts and Gestures" panels in System Settings.
 

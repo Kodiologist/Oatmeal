@@ -4,8 +4,8 @@ use utf8; binmode STDOUT, ':utf8'; binmode STDERR, ':utf8';
 use warnings;
 use strict;
 use SVG;
+use Image::LibRSVG; my $rsvg = new Image::LibRSVG;
 use Encode 'encode', 'decode';
-use File::Slurp 'write_file';
 use List::Util 'first';
 use IPC::System::Simple 'capturex', 'runx';
 use X11::Protocol;
@@ -24,10 +24,11 @@ my @workspace_keys = qw(
     j k l ;
 );
 
-my $svg_output_path = '/tmp/oatmeal-workspaces.svg';
 sub view_output
-   {my $bitmap_output_path = '/tmp/oatmeal-workspaces.ppm';
-    runx 'convert', $svg_output_path, $bitmap_output_path;
+   {my $bitmap_output_path = '/tmp/oatmeal-workspaces.png';
+    my $svg = shift;
+    $rsvg->loadImageFromString($svg->xmlify);
+    $rsvg->saveAs($bitmap_output_path);
     exec 'xli', $bitmap_output_path;}
 
 my $cell_ratio = 1024/768;
@@ -176,9 +177,7 @@ sub show_switcher_and_solicit_choice
                 fill => 'none',
                 stroke => 'black', 'stroke-width' => 2);}}
 
-    write_file $svg_output_path, encode 'utf8', $svg->xmlify;
-
-    my $kidpid = (fork() or view_output);
+    my $kidpid = (fork() or view_output($svg));
 
     my $workspace = getkey
         map {my ($i, $k) = @$_; ($keysym_names{$k} // $k) => $i}
