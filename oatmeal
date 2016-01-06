@@ -27,7 +27,13 @@ my @workspace_keys = qw(
 sub view_output
    {my $bitmap_output_path = '/tmp/oatmeal-workspaces.png';
     my $svg = shift;
-    $rsvg->loadImageFromString($svg->xmlify);
+    my $xml = $svg->xmlify;
+    $xml =~ s/ & +#/&#/g;
+      # Work around a bug in SVG.pm in the rendering of "×"
+      # (and perhaps other characters).
+    use File::Slurp "write_file"; write_file "/tmp/foo", $xml;
+    $rsvg->loadImageFromString($xml)
+      or die 'Reading SVG failed';
     $rsvg->saveAs($bitmap_output_path);
     exec 'xli', $bitmap_output_path;}
 
