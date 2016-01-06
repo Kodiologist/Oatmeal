@@ -5,7 +5,7 @@ use warnings;
 use strict;
 use SVG;
 use Image::LibRSVG; my $rsvg = new Image::LibRSVG;
-use Encode 'encode', 'decode';
+use Encode 'decode';
 use List::Util 'first';
 use IPC::System::Simple 'capturex', 'runx';
 use X11::Protocol;
